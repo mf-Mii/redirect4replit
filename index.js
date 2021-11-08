@@ -11,7 +11,6 @@ const server = app.listen(3000, function(){
   console.log("Server booted! Now working to PORT"+server.address().port);
 });
 
-const db = new sqlite3.Database("./redirect.db");
 
 app.get("/:target", function(req,res,next){
   let t = "/"+req.params.target;
@@ -32,15 +31,15 @@ app.get("/system/:t", function(req,res,next){
   
   if(t=="setup"&&allowSetup){
     console.log("Setup now...");
+    let db = new sqlite3.Database("./redirect.db");
     db.serialize(()=>{
       db.run("CREATE TABLE IF NOT EXISTS `redirect`(`from` VARCHAR(200) NOT NULL, `to` VARCHAR(250) NOT NULL , `tmp` BOOLEAN NOT NULL DEFAULT '0', PRIMARY KEY (`from`));");
     });
-
+    
     res.json({"status":"success"});
     console.log("Setup success");
   }else if(t=="status"){
     res.send("ok");
-    console.log("Status OK");
   }else{
     redirectApi("/"+t,res);
   }
@@ -55,6 +54,7 @@ app.post("/system/:a", function(req,res,next){
     let p = req.body.pass;
     console.log("POST /system/add-page "+f+" -> "+t+"("+tm+")");
     if(p===process.env.PASS_ADD){
+      let db = new sqlite3.Database("./redirect.db");
       db.serialize(()=>{
         let stmt = db.prepare("SELECT COUNT(*) AS cnt FROM `redirect` WHERE `from`=?;");
         let exists = false;
@@ -71,12 +71,14 @@ app.post("/system/:a", function(req,res,next){
           }
         });
       });
+      db.close();
     }
   }else if(a=="delete-page"){
     let f = req.body.from;
     let p = req.body.pass;
     console.log("POST /system/delete-page "+f);
     if(p===process.env.PASS_DELETE) {
+      let db = new sqlite3.Database("./redirect.db");
       db.serialize(()=>{
         let exists = false;
         let stmt = db.prepare("SELECT COUNT(*) AS cnt FROM `redirect` WHERE `from`=?;");
@@ -92,7 +94,8 @@ app.post("/system/:a", function(req,res,next){
             res.json({"status":"success"});
           }
         });
-      })
+      });
+      db.close();
     }
   }
 });
@@ -102,6 +105,7 @@ function redirect(from,res){
   let to = null;
   let tmp = -1;
   
+  let db = new sqlite3.Database("./redirect.db");
   db.serialize(()=>{
     let stmt = db.prepare("SELECT * FROM `redirect` WHERE `from`=?");
     stmt.each(from, function(err,row){
@@ -113,7 +117,7 @@ function redirect(from,res){
 
     stmt.finalize();
   });
-  
+  db.close();
   console.log("Redirect To:"+to+"("+tmp+")");
   if (to!=null){
     res.redirect(tmp==1?302:301, to);
@@ -126,6 +130,7 @@ function redirect(from,res){
 function redirectApi(from,res){
   let to = null;
   let tmp = 0;
+  let db = new sqlite3.Database("./redirect.db");
   db.serialize(()=>{
     let stmt = db.prepare("SELECT * FROM `redirect` WHERE `from`=?");
     stmt.each(from, function(err,row){
@@ -137,6 +142,7 @@ function redirectApi(from,res){
 
     stmt.finalize();
   });
+  db.close();
   console.log("Redirect API:"+to+"("+tmp+")");
   if (to!=null){
     res.json({"from":from,"to":to,"temp_302":tmp==1?true:false});
