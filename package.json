@@ -1,0 +1,24 @@
+{
+  "name": "redirect4replit",
+  "version": "1.0.0",
+  "description": "The server application to redirect domain for replit",
+  "main": "index.js",
+  "dependencies": {
+    "express": "^4.17.1",
+    "sqlite3": "^5.0.2"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mf-Mii/redirect4replit.git"
+  },
+  "author": "mf_Mii",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/mf-Mii/redirect4replit/issues"
+  },
+  "homepage": "https://github.com/products/redirect"
+}
