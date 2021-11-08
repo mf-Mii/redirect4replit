@@ -54,7 +54,7 @@ app.post("/system/:a", function(req,res,next){
     let tm = req.body.tmp;
     let p = req.body.pass;
     console.log("POST /system/add-page "+f+" -> "+t+"("+tm+")");
-    if(p==="MyPassword"){
+    if(p===process.env.PASS_ADD){
       db.serialize(()=>{
         let stmt = db.prepare("SELECT COUNT(*) AS cnt FROM `redirect` WHERE `from`=?;");
         let exists = false;
@@ -76,7 +76,7 @@ app.post("/system/:a", function(req,res,next){
     let f = req.body.from;
     let p = req.body.pass;
     console.log("POST /system/delete-page "+f);
-    if(p==="MyPassword") {
+    if(p===process.env.PASS_DELETE) {
       db.serialize(()=>{
         let exists = false;
         let stmt = db.prepare("SELECT COUNT(*) AS cnt FROM `redirect` WHERE `from`=?;");
