@@ -2,7 +2,6 @@ const express = require('express');
 const app = express();
 const sqlite3 = require('sqlite3');
 
-
 const allowSetup = false;
 
 
@@ -13,21 +12,25 @@ const server = app.listen(3000, function(){
 
 const db = new sqlite3.Database("./redirect.db");
 
-app.get("/:target", function(req,res,next){
-  let t = "/"+req.params.target;
-  if(t=="/favicon.ico"){
-    res.status(404);
+app.get("/*", function(req,res,next){
+  let t = req.originalUrl;
+  console.log("URL="+t+", isAPI="+(/^\/system\//.test(t)));
+  if(t=="/"){
+    res.redirect(301, "https://mfmii.work/domain/r.mfmii.work");
   }
-  console.log(t);
-  redirect(t, res);
+  else if(t=="/favicon.ico"){
+    res.status(404);
+  }else
+  if(/^\/system\//.test(t)){
+    getApi(req,res,next);
+  }
+  else{
+    redirect(t, res);
+  }
 });
 
-app.get("/", function(req,res,next){
-  res.redirect(301, "https://mfmii.work/domain/r.mfmii.work");
-});
-
-app.get("/system/:t", function(req,res,next){
-  let t = req.params.t;
+function getApi(req,res,next){
+  let t = req.originalUrl.replace(/^\/system\//, '');
   console.log("/system/"+t);
   
   if(t=="setup"&&allowSetup){
@@ -40,11 +43,10 @@ app.get("/system/:t", function(req,res,next){
     console.log("Setup success");
   }else if(t=="status"){
     res.send("ok");
-    console.log("Status OK");
   }else{
     redirectApi("/"+t,res);
   }
-});
+}
 
 app.post("/system/:a", function(req,res,next){
   let a = req.params.a;
@@ -120,7 +122,6 @@ function redirect(from,res){
     });
 
   });
-  //db.close();
 }
 
 function redirectApi(from,res){
@@ -137,7 +138,7 @@ function redirectApi(from,res){
       stmt.finalize();
       console.log("Redirect API:"+to+"("+tmp+")");
       if (to!=null){
-        res.json({"from":from,"to":to,"temp_302":tmp==1?true:false});
+        res.json({"from":from,"to":to,"temp":tmp!=0});
       }else{
         res.json({"from":from,"to":null});
       }
