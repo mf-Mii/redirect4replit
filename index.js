@@ -35,7 +35,7 @@ app.get("/system/:t", function(req,res,next){
     db.serialize(()=>{
       db.run("CREATE TABLE IF NOT EXISTS `redirect`(`from` VARCHAR(200) NOT NULL, `to` VARCHAR(250) NOT NULL , `tmp` BOOLEAN NOT NULL DEFAULT '0', PRIMARY KEY (`from`));");
     });
-    db.close();
+
     res.json({"status":"success"});
     console.log("Setup success");
   }else if(t=="status"){
@@ -49,26 +49,50 @@ app.get("/system/:t", function(req,res,next){
 app.post("/system/:a", function(req,res,next){
   let a = req.params.a;
   if(a=="add-page"){
-    console.log("POST /system/add-page "+req.body);
     let f = req.body.from;
     let t = req.body.to;
     let tm = req.body.tmp;
     let p = req.body.pass;
+    console.log("POST /system/add-page "+f+" -> "+t+"("+tm+")");
     if(p==="MyPassword"){
-      let stmt = db.prepare("INSERT INTO `redirect` (`from`,`to`,`tmp`) VALUES (?,?,?)");
-      stmt.run(f,t,tm);
-      db.close();
-      res.send("OK");
+      db.serialize(()=>{
+        let stmt = db.prepare("SELECT COUNT(*) AS cnt FROM `redirect` WHERE `from`=?;");
+        let exists = false;
+        stmt.get(f, function(err, row){
+          exists = (row.cnt!=0);
+          if(exists){
+            stmt.finalize();
+            res.json({"status":"error","message": "Already Exists"});
+          }else{
+            stmt = db.prepare("INSERT INTO `redirect` (`from`,`to`,`tmp`) VALUES (?,?,?);");
+            stmt.run(f,t,tm);
+            stmt.finalize();
+            res.json({"status":"success"});
+          }
+        });
+      });
     }
   }else if(a=="delete-page"){
-    console.log("POST /system/add-page "+req.body);
     let f = req.body.from;
     let p = req.body.pass;
+    console.log("POST /system/delete-page "+f);
     if(p==="MyPassword") {
-      let stmt = db.prepare("DELETE FROM `redirect` WHERE `from`=?;");
-      stmt.run(f);
-      db.close();
-      res.send("OK");
+      db.serialize(()=>{
+        let exists = false;
+        let stmt = db.prepare("SELECT COUNT(*) AS cnt FROM `redirect` WHERE `from`=?;");
+        stmt.get(f, function(err, row){
+          exists = row.cnt!=0;
+          if(!exists){
+            stmt.finalize();
+            res.json({"status":"success","message":"URL isn't registered"});
+          }else{
+            stmt = db.prepare("DELETE FROM `redirect` WHERE `from`=?;");
+            stmt.run(f);
+            stmt.finalize();
+            res.json({"status":"success"});
+          }
+        });
+      })
     }
   }
 });
@@ -77,7 +101,7 @@ function redirect(from,res){
   console.log("Redirect: FROM="+from);
   let to = null;
   let tmp = -1;
-
+  
   db.serialize(()=>{
     let stmt = db.prepare("SELECT * FROM `redirect` WHERE `from`=?");
     stmt.each(from, function(err,row){
@@ -105,14 +129,14 @@ function redirectApi(from,res){
   db.serialize(()=>{
     let stmt = db.prepare("SELECT * FROM `redirect` WHERE `from`=?");
     stmt.each(from, function(err,row){
-      to = row.to;
-      tmp = row.tmp;
-    },
-    function (err,count){
-
+      if(rows){
+        to = row.to;
+        tmp = row.tmp;
+      }
     });
+
+    stmt.finalize();
   });
-  db.close();
   console.log("Redirect API:"+to+"("+tmp+")");
   if (to!=null){
     res.json({"from":from,"to":to,"temp_302":tmp==1?true:false});
