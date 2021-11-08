@@ -104,22 +104,23 @@ function redirect(from,res){
   
   db.serialize(()=>{
     let stmt = db.prepare("SELECT * FROM `redirect` WHERE `from`=?");
-    stmt.each(from, function(err,row){
+    stmt.get(from, function(err,row){
       if(row){
         to = row.to;
         tmp = row.tmp;
       }
+      stmt.finalize();
+      console.log("Redirect To:"+to+"("+tmp+")");
+      if (to!=null){
+        res.redirect(tmp==1?302:301, to);
+      }else{
+        console.log("The url is not registered!");
+        res.redirect(302, "https://mfmii.work/404?s=redirect");
+      }
     });
 
-    stmt.finalize();
-    console.log("Redirect To:"+to+"("+tmp+")");
-    if (to!=null){
-      res.redirect(tmp==1?302:301, to);
-    }else{
-      console.log("The url is not registered!");
-      res.redirect(302, "https://mfmii.work/404?s=redirect");
-    }
   });
+  //db.close();
 }
 
 function redirectApi(from,res){
@@ -127,19 +128,20 @@ function redirectApi(from,res){
   let tmp = 0;
   db.serialize(()=>{
     let stmt = db.prepare("SELECT * FROM `redirect` WHERE `from`=?");
-    stmt.each(from, function(err,row){
+    stmt.get(from, function(err,row){
       if(row){
         to = row.to;
         tmp = row.tmp;
       }
+      
+      stmt.finalize();
+      console.log("Redirect API:"+to+"("+tmp+")");
+      if (to!=null){
+        res.json({"from":from,"to":to,"temp_302":tmp==1?true:false});
+      }else{
+        res.json({"from":from,"to":null});
+      }
     });
 
-    stmt.finalize();
-    console.log("Redirect API:"+to+"("+tmp+")");
-    if (to!=null){
-      res.json({"from":from,"to":to,"temp_302":tmp==1?true:false});
-    }else{
-      res.json({"from":from,"to":null});
-    }
   });
 }
